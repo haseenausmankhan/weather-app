@@ -8,6 +8,7 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [history, setHistory] = useState(null);
   const [forecast, setForecast] = useState(null);
+  const [marine, setMarine] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
@@ -141,6 +142,50 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const query = `${latitude},${longitude}`;
+          await fetchWeather(query);
+          setActiveTab('current');
+        } catch (err) {
+          setError('Failed to detect weather for your location');
+        } finally {
+          setLoading(false);
+        }
+      },
+      (err) => {
+        setLoading(false);
+        setError('Location access denied. Please search manually.');
+      }
+    );
+  };
+
+  const fetchMarine = () => {
+    const searchCity = query.trim() || 'Coastal Area';
+    setLoading(true);
+    setTimeout(() => {
+      setMarine({
+        location: { name: searchCity },
+        data: {
+          temp: Math.floor(Math.random() * 5) + 22,
+          tide: (Math.random() * 2 + 0.5).toFixed(1),
+          waves: (Math.random() * 1.5 + 0.5).toFixed(1),
+          visibility: Math.floor(Math.random() * 5) + 8
+        }
+      });
+      setLoading(false);
+    }, 800);
   };
 
   const handleSearch = (e) => {
@@ -410,22 +455,77 @@ function App() {
               exit={{ opacity: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
-              <div className="glass-card">
-                <h3 className="font-bold mb-2 flex items-center gap-2"><MapPin size={18} /> Reverse Geocoding</h3>
-                <p className="text-sm text-slate-400">Lookup weather for coordinates or IP addresses.</p>
+              <button
+                onClick={detectLocation}
+                className="glass-card text-left hover:border-blue-400/50 transition-all group"
+              >
+                <h3 className="font-bold mb-2 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
+                  <MapPin size={18} /> Reverse Geocoding
+                </h3>
+                <p className="text-sm text-slate-400">Click to detect your current location automatically.</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('forecast')}
+                className="glass-card text-left hover:border-blue-400/50 transition-all group"
+              >
+                <h3 className="font-bold mb-2 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
+                  <Calendar size={18} /> Forecast Data
+                </h3>
+                <p className="text-sm text-slate-400">Click to view 5-day detailed weather forecasts.</p>
+              </button>
+
+              <div className="glass-card flex flex-col gap-4 col-span-1 md:col-span-2">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <Wind size={18} /> Marine Weather
+                  </h3>
+                  {!marine && (
+                    <button
+                      onClick={fetchMarine}
+                      className="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full border border-blue-500/30 hover:bg-blue-500/30 transition-all"
+                    >
+                      Load Marine Info
+                    </button>
+                  )}
+                </div>
+
+                {marine ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fadeIn">
+                    <div className="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Sea Temp</div>
+                      <div className="text-xl font-bold">{marine.data.temp}°C</div>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Tide Level</div>
+                      <div className="text-xl font-bold font-mono">{marine.data.tide}m</div>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Wave Height</div>
+                      <div className="text-xl font-bold font-mono">{marine.data.waves}m</div>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg text-center border border-white/5">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Visibility</div>
+                      <div className="text-xl font-bold">{marine.data.visibility}km</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">Detailed sea level, waves, and tide information (Demo Mode).</p>
+                )}
               </div>
-              <div className="glass-card">
-                <h3 className="font-bold mb-2 flex items-center gap-2"><Calendar size={18} /> Forecast Data</h3>
-                <p className="text-sm text-slate-400">Get up to 14 days of detailed weather forecasts.</p>
-              </div>
-              <div className="glass-card">
-                <h3 className="font-bold mb-2 flex items-center gap-2"><Wind size={18} /> Marine Weather</h3>
-                <p className="text-sm text-slate-400">Detailed sea level and tide information.</p>
-              </div>
-              <div className="glass-card">
-                <h3 className="font-bold mb-2 flex items-center gap-2"><Search size={18} /> Location Autocomplete</h3>
-                <p className="text-sm text-slate-400">Search from millions of global cities as you type.</p>
-              </div>
+
+              <button
+                onClick={() => {
+                  const input = document.querySelector('.input-glass');
+                  if (input) input.focus();
+                }}
+                className="glass-card text-left hover:border-blue-400/50 transition-all group md:col-span-2"
+              >
+                <h3 className="font-bold mb-2 flex items-center gap-2 group-hover:text-blue-400 transition-colors">
+                  <Search size={18} /> Location Autocomplete
+                </h3>
+                <p className="text-sm text-slate-400">Click here to focus search and choose from millions of cities.</p>
+              </button>
             </motion.section>
           )}
         </AnimatePresence>
